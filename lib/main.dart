@@ -42,8 +42,10 @@ class _ClockTableScreenState extends State<ClockTableScreen> {
   ];
 
   final List<Duration> _remaining = List.generate(4, (_) => _startingTime);
+  final List<int> _lifeTotals = List.generate(4, (_) => 40);
   late final Timer _timer;
   int _activePlayer = 0;
+  int? _lifeControlsPlayer;
 
   @override
   void initState() {
@@ -70,6 +72,19 @@ class _ClockTableScreenState extends State<ClockTableScreen> {
 
     setState(() {
       _activePlayer = (_activePlayer + 1) % _remaining.length;
+    });
+  }
+
+  void _toggleLifeControls(int playerIndex) {
+    setState(() {
+      _lifeControlsPlayer =
+          _lifeControlsPlayer == playerIndex ? null : playerIndex;
+    });
+  }
+
+  void _changeLife(int playerIndex, int delta) {
+    setState(() {
+      _lifeTotals[playerIndex] += delta;
     });
   }
 
@@ -144,9 +159,7 @@ class _ClockTableScreenState extends State<ClockTableScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
+      )));
   }
 
   Widget _buildClockTile(int gridIndex) {
@@ -154,10 +167,15 @@ class _ClockTableScreenState extends State<ClockTableScreen> {
     return PlayerClockTile(
       color: _playerColors[playerIndex],
       remaining: _remaining[playerIndex],
+      lifeTotal: _lifeTotals[playerIndex],
       isActive: playerIndex == _activePlayer,
+      isLifeTracking: playerIndex == _lifeControlsPlayer,
       playerNumber: playerIndex + 1,
       quarterTurns: gridIndex.isEven ? 1 : 3,
+      isEven: gridIndex.isEven,
       onTap: () => _passPriority(playerIndex),
+      onLifePressed: () => _toggleLifeControls(playerIndex),
+      onLifeChanged: (delta) => _changeLife(playerIndex, delta),
     );
   }
 }
@@ -167,22 +185,31 @@ class PlayerClockTile extends StatelessWidget {
     super.key,
     required this.color,
     required this.remaining,
+    required this.lifeTotal,
     required this.isActive,
+    required this.isLifeTracking,
     required this.playerNumber,
     required this.quarterTurns,
+    required this.isEven,
     required this.onTap,
+    required this.onLifePressed,
+    required this.onLifeChanged,
   });
 
   final Color color;
   final Duration remaining;
+  final int lifeTotal;
   final bool isActive;
+  final bool isLifeTracking;
   final int playerNumber;
   final int quarterTurns;
+  final bool isEven;
   final VoidCallback onTap;
+  final VoidCallback onLifePressed;
+  final ValueChanged<int> onLifeChanged;
 
   @override
   Widget build(BuildContext context) {
-    final markColor = Colors.black.withValues(alpha: 0.28);
     final tile = AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
@@ -204,80 +231,47 @@ class PlayerClockTile extends StatelessWidget {
       ),
       child: Material(
         color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(30),
-          onTap: onTap,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Positioned(
-                left: 46,
-                top: 0,
-                bottom: 0,
-                child: Center(
-                  child: _DecorativeMark(icon: Icons.add, color: markColor),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (!isLifeTracking)
+              Positioned.fill(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(30),
+                  onTap: onTap,
                 ),
               ),
-              Positioned(
-                right: 46,
-                top: 0,
-                bottom: 0,
+            if (isLifeTracking) _buildLifeAdjusters() else ..._buildMarks(),
+            _buildTimerText(),
+            if (isLifeTracking)
+              IgnorePointer(
                 child: Center(
-                  child: _DecorativeMark(icon: Icons.remove, color: markColor),
-                ),
-              ),
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 44),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     child: Text(
-                      _formatDuration(remaining),
-                      key: ValueKey('player-$playerNumber-timer'),
+                      '$lifeTotal',
                       style: const TextStyle(
-                        color: Colors.black,
-                        fontFeatures: [FontFeature.tabularFigures()],
-                        fontSize: 128,
+                        color: Colors.white,
+                        fontSize: 72,
                         fontWeight: FontWeight.w900,
-                        height: 0.9,
+                        height: 1,
                         letterSpacing: 0,
                       ),
                     ),
                   ),
                 ),
               ),
-              Positioned(
-                left: 24,
-                top: 18,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 180),
-                  opacity: isActive ? 1 : 0.46,
-                  child: Text(
-                    'P$playerNumber',
-                    style: TextStyle(
-                      color: Colors.black.withValues(alpha: 0.56),
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 22,
-                bottom: 18,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 180),
-                  opacity: isActive ? 1 : 0,
-                  child: const Icon(
-                    Icons.play_arrow_rounded,
-                    color: Colors.black,
-                    size: 34,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            _buildPlayerLabel(),
+            _buildActiveIndicator(),
+            _buildLifeButton(),
+          ],
         ),
       ),
     );
@@ -287,6 +281,128 @@ class PlayerClockTile extends StatelessWidget {
     }
 
     return RotatedBox(quarterTurns: quarterTurns, child: tile);
+  }
+
+  Widget _buildLifeAdjusters() {
+    return Positioned.fill(
+      child: Row(
+        children: [
+          Expanded(
+            child: _LifeAdjustButton(
+              icon: Icons.add,
+              onTap: () => onLifeChanged(1),
+            ),
+          ),
+          Expanded(
+            child: _LifeAdjustButton(
+              icon: Icons.remove,
+              onTap: () => onLifeChanged(-1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildMarks() {
+    final markColor = Colors.black.withValues(alpha: 0.28);
+
+    return [
+      Positioned(
+        left: 46,
+        top: 0,
+        bottom: 0,
+        child: Center(
+          child: _DecorativeMark(icon: Icons.add, color: markColor),
+        ),
+      ),
+      Positioned(
+        right: 46,
+        top: 0,
+        bottom: 0,
+        child: Center(
+          child: _DecorativeMark(icon: Icons.remove, color: markColor),
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildTimerText() {
+    return IgnorePointer(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 44),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              _formatDuration(remaining),
+              key: ValueKey('player-$playerNumber-timer'),
+              style: const TextStyle(
+                color: Colors.black,
+                fontFeatures: [FontFeature.tabularFigures()],
+                fontSize: 128,
+                fontWeight: FontWeight.w900,
+                height: 0.9,
+                letterSpacing: 0,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlayerLabel() {
+    return Positioned(
+      right: playerNumber.isEven ? 24 : null,
+      left: playerNumber.isEven ? null : 24,
+      top: 18,
+      child: IgnorePointer(
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 180),
+          opacity: isActive ? 1 : 0.46,
+          child: Text(
+            'P$playerNumber',
+            style: TextStyle(
+              color: Colors.black.withValues(alpha: 0.56),
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveIndicator() {
+    return Positioned(
+      right: 22,
+      bottom: 18,
+      child: IgnorePointer(
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 180),
+          opacity: isActive ? 1 : 0,
+          child: const Icon(
+            Icons.play_arrow_rounded,
+            color: Colors.black,
+            size: 34,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLifeButton() {
+    return Positioned(
+      left: playerNumber.isEven ? 10 : null,
+      right: playerNumber.isEven ? null : 10,
+      top: 10,
+      child: _LifeButton(
+        lifeTotal: lifeTotal,
+        onPressed: onLifePressed,
+      ),
+    );
   }
 
   static String _formatDuration(Duration duration) {
@@ -303,6 +419,61 @@ class PlayerClockTile extends StatelessWidget {
   }
 
   static String _twoDigits(int value) => value.toString().padLeft(2, '0');
+}
+
+class _LifeButton extends StatelessWidget {
+  const _LifeButton({required this.lifeTotal, required this.onPressed});
+
+  final int lifeTotal;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton(
+      style: FilledButton.styleFrom(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        minimumSize: const Size(72, 42),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      onPressed: onPressed,
+      child: Text(
+        '$lifeTotal',
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0,
+        ),
+      ),
+    );
+  }
+}
+
+class _LifeAdjustButton extends StatelessWidget {
+  const _LifeAdjustButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.08),
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox.expand(
+          child: Center(
+            child: Icon(
+              icon,
+              color: Colors.black.withValues(alpha: 0.42),
+              size: 76,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _DecorativeMark extends StatelessWidget {
