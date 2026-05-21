@@ -43,6 +43,10 @@ class _ClockTableScreenState extends State<ClockTableScreen> {
 
   final List<Duration> _remaining = List.generate(4, (_) => _startingTime);
   final List<int> _lifeTotals = List.generate(4, (_) => 40);
+  final List<List<int>> _commanderDamage = List.generate(
+    4,
+    (_) => List.generate(4, (_) => 0),
+  );
   late final Timer _timer;
   int _activePlayer = 0;
   int? _lifeControlsPlayer;
@@ -88,6 +92,18 @@ class _ClockTableScreenState extends State<ClockTableScreen> {
     });
   }
 
+  void _changeCommanderDamage(int fromPlayer, int toPlayer, int delta) {
+    setState(() {
+      final current = _commanderDamage[fromPlayer][toPlayer];
+      final newValue = current + delta;
+      if (newValue < 0) {
+        return;
+      }
+      _commanderDamage[fromPlayer][toPlayer] = newValue.clamp(0, 999);
+      _lifeTotals[toPlayer] -= delta;
+    });
+  }
+
   void _tickClock() {
     if (_lifeControlsPlayer != null) {
       return;
@@ -108,6 +124,11 @@ class _ClockTableScreenState extends State<ClockTableScreen> {
     setState(() {
       for (var index = 0; index < _remaining.length; index++) {
         _remaining[index] = _startingTime;
+      }
+      for (var i = 0; i < 4; i++) {
+        for (var j = 0; j < 4; j++) {
+          _commanderDamage[i][j] = 0;
+        }
       }
       _activePlayer = 0;
     });
@@ -168,18 +189,28 @@ class _ClockTableScreenState extends State<ClockTableScreen> {
 
   Widget _buildClockTile(int gridIndex) {
     final playerIndex = _clockwiseLayout[gridIndex];
+    final isAnyLifeTracking = _lifeControlsPlayer != null;
+    final isThisLifeTracking = playerIndex == _lifeControlsPlayer;
+    final isCommanderDmgTracking = isAnyLifeTracking && !isThisLifeTracking;
     return PlayerClockTile(
       color: _playerColors[playerIndex],
       remaining: _remaining[playerIndex],
       lifeTotal: _lifeTotals[playerIndex],
       isActive: playerIndex == _activePlayer,
-      isLifeTracking: playerIndex == _lifeControlsPlayer,
+      isLifeTracking: isThisLifeTracking,
+      isCommanderDamageTracking: isCommanderDmgTracking,
+      commanderDamage: isCommanderDmgTracking
+          ? _commanderDamage[playerIndex][_lifeControlsPlayer!]
+          : 0,
       playerNumber: playerIndex + 1,
       quarterTurns: gridIndex.isEven ? 1 : 3,
       isEven: gridIndex.isEven,
       onTap: () => _passPriority(playerIndex),
       onLifePressed: () => _toggleLifeControls(playerIndex),
       onLifeChanged: (delta) => _changeLife(playerIndex, delta),
+      onCommanderDamageChanged: isCommanderDmgTracking
+          ? (delta) => _changeCommanderDamage(playerIndex, _lifeControlsPlayer!, delta)
+          : null,
     );
   }
 }
@@ -192,12 +223,15 @@ class PlayerClockTile extends StatelessWidget {
     required this.lifeTotal,
     required this.isActive,
     required this.isLifeTracking,
+    required this.isCommanderDamageTracking,
+    required this.commanderDamage,
     required this.playerNumber,
     required this.quarterTurns,
     required this.isEven,
     required this.onTap,
     required this.onLifePressed,
     required this.onLifeChanged,
+    this.onCommanderDamageChanged,
   });
 
   final Color color;
@@ -205,12 +239,15 @@ class PlayerClockTile extends StatelessWidget {
   final int lifeTotal;
   final bool isActive;
   final bool isLifeTracking;
+  final bool isCommanderDamageTracking;
+  final int commanderDamage;
   final int playerNumber;
   final int quarterTurns;
   final bool isEven;
   final VoidCallback onTap;
   final VoidCallback onLifePressed;
   final ValueChanged<int> onLifeChanged;
+  final ValueChanged<int>? onCommanderDamageChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -238,14 +275,19 @@ class PlayerClockTile extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (!isLifeTracking)
+            if (!isLifeTracking && !isCommanderDamageTracking)
               Positioned.fill(
                 child: InkWell(
                   borderRadius: BorderRadius.circular(30),
                   onTap: onTap,
                 ),
               ),
-            if (isLifeTracking) _buildLifeAdjusters() else ..._buildMarks(),
+            if (isLifeTracking)
+              _buildLifeAdjusters()
+            else if (isCommanderDamageTracking)
+              _buildCommanderDamageAdjusters()
+            else
+              ..._buildMarks(),
             _buildTimerText(),
             if (isLifeTracking)
               IgnorePointer(
@@ -272,9 +314,34 @@ class PlayerClockTile extends StatelessWidget {
                   ),
                 ),
               ),
+            if (isCommanderDamageTracking)
+              IgnorePointer(
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$commanderDamage',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 64,
+                        fontWeight: FontWeight.w900,
+                        height: 1,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             _buildPlayerLabel(),
             _buildActiveIndicator(),
-            _buildLifeButton(),
+            if (!isCommanderDamageTracking) _buildLifeButton(),
           ],
         ),
       ),
@@ -301,6 +368,27 @@ class PlayerClockTile extends StatelessWidget {
             child: _LifeAdjustButton(
               icon: Icons.add,
               onTap: () => onLifeChanged(1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommanderDamageAdjusters() {
+    return Positioned.fill(
+      child: Row(
+        children: [
+          Expanded(
+            child: _LifeAdjustButton(
+              icon: Icons.remove,
+              onTap: () => onCommanderDamageChanged?.call(-1),
+            ),
+          ),
+          Expanded(
+            child: _LifeAdjustButton(
+              icon: Icons.add,
+              onTap: () => onCommanderDamageChanged?.call(1),
             ),
           ),
         ],
