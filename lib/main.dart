@@ -32,8 +32,8 @@ class ClockTableScreen extends StatefulWidget {
 }
 
 class _ClockTableScreenState extends State<ClockTableScreen> {
-  static const _startingTime = Duration(minutes: 15);
   static const _clockwiseLayout = <int>[0, 1, 3, 2];
+  int _initialMinutes = 15;
   static const _playerColors = <Color>[
     Color(0xffff0051),
     Color(0xff4652ff),
@@ -41,7 +41,10 @@ class _ClockTableScreenState extends State<ClockTableScreen> {
     Color(0xffffbd08),
   ];
 
-  final List<Duration> _remaining = List.generate(4, (_) => _startingTime);
+  final List<ValueNotifier<Duration>> _remaining = List.generate(
+    4,
+    (_) => ValueNotifier<Duration>(Duration(minutes: 15)),
+  );
   final List<int> _lifeTotals = List.generate(4, (_) => 40);
   final List<List<int>> _commanderDamage = List.generate(
     4,
@@ -60,7 +63,9 @@ class _ClockTableScreenState extends State<ClockTableScreen> {
   @override
   void reassemble() {
     super.reassemble();
-    _resetClocks();
+    for (var i = 0; i < 4; i++) {
+      _remaining[i].value = Duration(minutes: _initialMinutes);
+    }
   }
 
   @override
@@ -109,29 +114,153 @@ class _ClockTableScreenState extends State<ClockTableScreen> {
       return;
     }
 
-    final currentTime = _remaining[_activePlayer];
+    final currentTime = _remaining[_activePlayer].value;
     if (currentTime == Duration.zero) {
       return;
     }
 
+    final nextTime = currentTime - const Duration(seconds: 1);
+    _remaining[_activePlayer].value = nextTime.isNegative ? Duration.zero : nextTime;
+  }
+
+  void _resetAll() {
+    final start = Duration(minutes: _initialMinutes);
+    for (var i = 0; i < 4; i++) {
+      _remaining[i].value = start;
+      _lifeTotals[i] = 40;
+      for (var j = 0; j < 4; j++) {
+        _commanderDamage[i][j] = 0;
+      }
+    }
     setState(() {
-      final nextTime = currentTime - const Duration(seconds: 1);
-      _remaining[_activePlayer] = nextTime.isNegative ? Duration.zero : nextTime;
+      _activePlayer = 0;
+      _lifeControlsPlayer = null;
     });
   }
 
-  void _resetClocks() {
-    setState(() {
-      for (var index = 0; index < _remaining.length; index++) {
-        _remaining[index] = _startingTime;
-      }
-      for (var i = 0; i < 4; i++) {
-        for (var j = 0; j < 4; j++) {
-          _commanderDamage[i][j] = 0;
-        }
-      }
-      _activePlayer = 0;
-    });
+  void _showSettings() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xff1a1c20),
+      builder: (context) {
+        var localMinutes = _initialMinutes;
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const Text(
+                    'Settings',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Initial timer',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white10,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: localMinutes > 1
+                              ? () => setSheetState(() => localMinutes--)
+                              : null,
+                          child: const Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Icon(Icons.remove,
+                                color: Colors.white70, size: 28),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Text(
+                          '$localMinutes min',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white10,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: localMinutes < 99
+                              ? () => setSheetState(() => localMinutes++)
+                              : null,
+                          child: const Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Icon(Icons.add,
+                                color: Colors.white70, size: 28),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xff1f8a70),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text(
+                        'Reset All',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      onPressed: () {
+                        _initialMinutes = localMinutes;
+                        _resetAll();
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -175,11 +304,11 @@ class _ClockTableScreenState extends State<ClockTableScreen> {
                   border: Border.all(color: Colors.black, width: 8),
                 ),
                 child: IconButton(
-                  tooltip: 'Reset clocks',
+                  tooltip: 'Settings',
                   color: Colors.white,
                   iconSize: 40,
                   icon: const Icon(Icons.casino),
-                  onPressed: _resetClocks,
+                  onPressed: _showSettings,
                 ),
               ),
             ),
@@ -192,25 +321,27 @@ class _ClockTableScreenState extends State<ClockTableScreen> {
     final isAnyLifeTracking = _lifeControlsPlayer != null;
     final isThisLifeTracking = playerIndex == _lifeControlsPlayer;
     final isCommanderDmgTracking = isAnyLifeTracking && !isThisLifeTracking;
-    return PlayerClockTile(
-      color: _playerColors[playerIndex],
-      remaining: _remaining[playerIndex],
-      lifeTotal: _lifeTotals[playerIndex],
-      isActive: playerIndex == _activePlayer,
-      isLifeTracking: isThisLifeTracking,
-      isCommanderDamageTracking: isCommanderDmgTracking,
-      commanderDamage: isCommanderDmgTracking
-          ? _commanderDamage[playerIndex][_lifeControlsPlayer!]
-          : 0,
-      playerNumber: playerIndex + 1,
-      quarterTurns: gridIndex.isEven ? 1 : 3,
-      isEven: gridIndex.isEven,
-      onTap: () => _passPriority(playerIndex),
-      onLifePressed: () => _toggleLifeControls(playerIndex),
-      onLifeChanged: (delta) => _changeLife(playerIndex, delta),
-      onCommanderDamageChanged: isCommanderDmgTracking
-          ? (delta) => _changeCommanderDamage(playerIndex, _lifeControlsPlayer!, delta)
-          : null,
+    return RepaintBoundary(
+      child: PlayerClockTile(
+        color: _playerColors[playerIndex],
+        remainingNotifier: _remaining[playerIndex],
+        lifeTotal: _lifeTotals[playerIndex],
+        isActive: playerIndex == _activePlayer,
+        isLifeTracking: isThisLifeTracking,
+        isCommanderDamageTracking: isCommanderDmgTracking,
+        commanderDamage: isCommanderDmgTracking
+            ? _commanderDamage[playerIndex][_lifeControlsPlayer!]
+            : 0,
+        playerNumber: playerIndex + 1,
+        quarterTurns: gridIndex.isEven ? 1 : 3,
+        isEven: gridIndex.isEven,
+        onTap: () => _passPriority(playerIndex),
+        onLifePressed: () => _toggleLifeControls(playerIndex),
+        onLifeChanged: (delta) => _changeLife(playerIndex, delta),
+        onCommanderDamageChanged: isCommanderDmgTracking
+            ? (delta) => _changeCommanderDamage(playerIndex, _lifeControlsPlayer!, delta)
+            : null,
+      ),
     );
   }
 }
@@ -219,7 +350,7 @@ class PlayerClockTile extends StatelessWidget {
   const PlayerClockTile({
     super.key,
     required this.color,
-    required this.remaining,
+    required this.remainingNotifier,
     required this.lifeTotal,
     required this.isActive,
     required this.isLifeTracking,
@@ -235,7 +366,7 @@ class PlayerClockTile extends StatelessWidget {
   });
 
   final Color color;
-  final Duration remaining;
+  final ValueNotifier<Duration> remainingNotifier;
   final int lifeTotal;
   final bool isActive;
   final bool isLifeTracking;
@@ -261,14 +392,15 @@ class PlayerClockTile extends StatelessWidget {
           color: isActive ? Colors.black : Colors.transparent,
           width: isActive ? 6 : 0,
         ),
-        boxShadow: [
-          if (isActive)
-            BoxShadow(
-              color: Colors.white.withValues(alpha: 0.3),
-              blurRadius: 18,
-              spreadRadius: 1,
-            ),
-        ],
+        boxShadow: isActive
+            ? [
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  blurRadius: 6,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
       ),
       child: Material(
         color: Colors.transparent,
@@ -424,20 +556,22 @@ class PlayerClockTile extends StatelessWidget {
       child: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 44),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              _formatDuration(remaining),
-              key: ValueKey('player-$playerNumber-timer'),
-              style: const TextStyle(
-                color: Colors.black,
-                fontFeatures: [FontFeature.tabularFigures()],
-                fontSize: 128,
-                fontWeight: FontWeight.w900,
-                height: 0.9,
-                letterSpacing: 0,
-              ),
-            ),
+          child: ValueListenableBuilder<Duration>(
+            valueListenable: remainingNotifier,
+            builder: (context, remaining, _) {
+              return Text(
+                _formatDuration(remaining),
+                key: ValueKey('player-$playerNumber-timer'),
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                  fontSize: 128,
+                  fontWeight: FontWeight.w900,
+                  height: 0.9,
+                  letterSpacing: 0,
+                ),
+              );
+            },
           ),
         ),
       ),

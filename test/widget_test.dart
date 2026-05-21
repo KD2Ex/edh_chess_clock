@@ -24,7 +24,11 @@ void main() {
     expect(find.text('14:59'), findsNWidgets(2));
     expect(find.text('15:00'), findsNWidgets(2));
 
-    await tester.tap(find.byTooltip('Reset clocks'));
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('Reset All'));
     await tester.pump();
 
     expect(find.text('15:00'), findsNWidgets(4));
