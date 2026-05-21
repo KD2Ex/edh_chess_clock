@@ -89,6 +89,10 @@ class _ClockTableScreenState extends State<ClockTableScreen> {
   }
 
   void _tickClock() {
+    if (_lifeControlsPlayer != null) {
+      return;
+    }
+
     final currentTime = _remaining[_activePlayer];
     if (currentTime == Duration.zero) {
       return;
@@ -289,14 +293,14 @@ class PlayerClockTile extends StatelessWidget {
         children: [
           Expanded(
             child: _LifeAdjustButton(
-              icon: Icons.add,
-              onTap: () => onLifeChanged(1),
+              icon: Icons.remove,
+              onTap: () => onLifeChanged(-1),
             ),
           ),
           Expanded(
             child: _LifeAdjustButton(
-              icon: Icons.remove,
-              onTap: () => onLifeChanged(-1),
+              icon: Icons.add,
+              onTap: () => onLifeChanged(1),
             ),
           ),
         ],
@@ -313,7 +317,7 @@ class PlayerClockTile extends StatelessWidget {
         top: 0,
         bottom: 0,
         child: Center(
-          child: _DecorativeMark(icon: Icons.add, color: markColor),
+          child: _DecorativeMark(icon: Icons.remove, color: markColor),
         ),
       ),
       Positioned(
@@ -321,7 +325,7 @@ class PlayerClockTile extends StatelessWidget {
         top: 0,
         bottom: 0,
         child: Center(
-          child: _DecorativeMark(icon: Icons.remove, color: markColor),
+          child: _DecorativeMark(icon: Icons.add, color: markColor),
         ),
       ),
     ];
