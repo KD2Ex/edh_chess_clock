@@ -417,9 +417,9 @@ class PlayerClockTile extends StatelessWidget {
             if (isLifeTracking)
               _buildLifeAdjusters()
             else if (isCommanderDamageTracking)
-              _buildCommanderDamageAdjusters()
-            else
-              ..._buildMarks(),
+              _buildCommanderDamageAdjusters(),
+            // else
+              // ..._buildMarks(),
             _buildTimerText(),
             if (isLifeTracking)
               IgnorePointer(
@@ -430,7 +430,7 @@ class PlayerClockTile extends StatelessWidget {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black,
+                      color: Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
