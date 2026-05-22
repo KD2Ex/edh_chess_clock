@@ -420,7 +420,7 @@ class PlayerClockTile extends StatelessWidget {
               _buildCommanderDamageAdjusters(),
             // else
               // ..._buildMarks(),
-            _buildTimerText(),
+            if (!isLifeTracking && !isCommanderDamageTracking) _buildTimerText(),
             if (isLifeTracking)
               IgnorePointer(
                 child: Center(
