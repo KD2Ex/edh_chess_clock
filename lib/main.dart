@@ -431,14 +431,10 @@ class PlayerClockTile extends StatelessWidget {
                             horizontal: 28,
                             vertical: 10,
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
                           child: Text(
                             '$lifeTotal',
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: Colors.black,
                               fontSize: 72,
                               fontWeight: FontWeight.w900,
                               height: 1,
@@ -457,14 +453,10 @@ class PlayerClockTile extends StatelessWidget {
                                 horizontal: 28,
                                 vertical: 10,
                               ),
-                              decoration: BoxDecoration(
-                                color: Colors.black,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
                               child: Text(
                                 '$commanderDamage',
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: Colors.black,
                                   fontSize: 64,
                                   fontWeight: FontWeight.w900,
                                   height: 1,
@@ -569,10 +561,10 @@ class PlayerClockTile extends StatelessWidget {
                 _formatDuration(remaining),
                 key: ValueKey('player-$playerNumber-timer'),
                 style: const TextStyle(
-                  color: Colors.black,
+                  color: Color.fromARGB(180, 0, 0, 0),
                   fontFeatures: [FontFeature.tabularFigures()],
-                  fontSize: 128,
-                  fontWeight: FontWeight.w900,
+                  fontSize: 114,
+                  fontWeight: FontWeight.w800,
                   height: 0.9,
                   letterSpacing: 0,
                 ),
@@ -627,10 +619,11 @@ class PlayerClockTile extends StatelessWidget {
 
   Widget _buildLifeButton() {
     return Positioned(
-      left: playerNumber.isEven ? 10 : null,
-      right: playerNumber.isEven ? null : 10,
-      top: 10,
+      left: playerNumber.isEven ? 18 : null,
+      right: playerNumber.isEven ? null : 18,
+      top: 18,
       child: _LifeButton(
+        color: color,
         lifeTotal: lifeTotal,
         onPressed: onLifePressed,
       ),
@@ -654,8 +647,9 @@ class PlayerClockTile extends StatelessWidget {
 }
 
 class _LifeButton extends StatelessWidget {
-  const _LifeButton({required this.lifeTotal, required this.onPressed});
+  const _LifeButton({required this.color, required this.lifeTotal, required this.onPressed});
 
+  final Color color;
   final int lifeTotal;
   final VoidCallback onPressed;
 
@@ -663,17 +657,17 @@ class _LifeButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return FilledButton(
       style: FilledButton.styleFrom(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        minimumSize: const Size(72, 42),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        backgroundColor: Color.alphaBlend(Colors.white.withValues(alpha: 0.35), color),
+        foregroundColor: Color.fromARGB(90, 0, 0, 0),
+        minimumSize: const Size(54, 54),
+        padding: EdgeInsets.zero,
+        shape: const CircleBorder(),
       ),
       onPressed: onPressed,
       child: Text(
         '$lifeTotal',
         style: const TextStyle(
-          fontSize: 16,
+          fontSize: 18,
           fontWeight: FontWeight.w900,
           letterSpacing: 0,
         ),
