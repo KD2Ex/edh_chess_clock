@@ -554,22 +554,25 @@ class PlayerClockTile extends StatelessWidget {
       child: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 44),
-          child: ValueListenableBuilder<Duration>(
-            valueListenable: remainingNotifier,
-            builder: (context, remaining, _) {
-              return Text(
-                _formatDuration(remaining),
-                key: ValueKey('player-$playerNumber-timer'),
-                style: const TextStyle(
-                  color: Color.fromARGB(180, 0, 0, 0),
-                  fontFeatures: [FontFeature.tabularFigures()],
-                  fontSize: 114,
-                  fontWeight: FontWeight.w800,
-                  height: 0.9,
-                  letterSpacing: 0,
-                ),
-              );
-            },
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: ValueListenableBuilder<Duration>(
+              valueListenable: remainingNotifier,
+              builder: (context, remaining, _) {
+                return Text(
+                  _formatDuration(remaining),
+                  key: ValueKey('player-$playerNumber-timer'),
+                  style: const TextStyle(
+                    color: Color.fromARGB(180, 0, 0, 0),
+                    fontFeatures: [FontFeature.tabularFigures()],
+                    fontSize: 114,
+                    fontWeight: FontWeight.w800,
+                    height: 0.9,
+                    letterSpacing: 0,
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),
