@@ -420,57 +420,62 @@ class PlayerClockTile extends StatelessWidget {
               _buildCommanderDamageAdjusters(),
             // else
               // ..._buildMarks(),
-            if (!isLifeTracking && !isCommanderDamageTracking) _buildTimerText(),
-            if (isLifeTracking)
-              IgnorePointer(
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 28,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '$lifeTotal',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 72,
-                        fontWeight: FontWeight.w900,
-                        height: 1,
-                        letterSpacing: 0,
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: isLifeTracking
+                  ? IgnorePointer(
+                      key: const ValueKey('life'),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 28,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '$lifeTotal',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 72,
+                              fontWeight: FontWeight.w900,
+                              height: 1,
+                              letterSpacing: 0,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-              ),
-            if (isCommanderDamageTracking)
-              IgnorePointer(
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 28,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '$commanderDamage',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 64,
-                        fontWeight: FontWeight.w900,
-                        height: 1,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+                    )
+                  : isCommanderDamageTracking
+                      ? IgnorePointer(
+                          key: const ValueKey('commander'),
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '$commanderDamage',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 64,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      : _buildTimerText(key: const ValueKey('timer')),
+            ),
             _buildPlayerLabel(),
             _buildActiveIndicator(),
             if (!isCommanderDamageTracking) _buildLifeButton(),
@@ -551,8 +556,9 @@ class PlayerClockTile extends StatelessWidget {
     ];
   }
 
-  Widget _buildTimerText() {
+  Widget _buildTimerText({Key? key}) {
     return IgnorePointer(
+      key: key,
       child: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 44),
